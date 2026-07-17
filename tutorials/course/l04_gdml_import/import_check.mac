@@ -1,0 +1,9 @@
+/control/verbose 1
+/geometry/source GRID10B.gdml
+/run/initialize
+/geometry/test/run
+
+# Run interactively when an OpenGL display is available:
+# /vis/open OGL
+# /vis/drawVolume
+# /vis/scene/add/axes 0 0 0 100 mm

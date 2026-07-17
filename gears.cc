@@ -4,6 +4,7 @@
  */
 #include <vector>
 using namespace std;
+#include <G4Material.hh>
 #include <G4SteppingManager.hh>
 #include <G4SteppingVerbose.hh>
 /**
@@ -489,6 +490,9 @@ TextDetectorBuilder::ConstructDetector(const G4tgrVolume *topVol) {
 #include <G4UIdirectory.hh>
 #include <G4UImessenger.hh>
 #include <G4VUserDetectorConstruction.hh>
+
+void PrepareGRID10BMaterials();
+G4VPhysicalVolume *BuildGRID10BImportWorld(G4VPhysicalVolume *gridWorld);
 /**
  * Construct detector geometry.
  *
@@ -596,8 +600,13 @@ void Detector::SetNewValue(G4UIcommand *cmd, G4String value) {
 #ifdef hasGDML
     } else { // GDML input
       G4GDMLParser parser;
+      if (value.find("GRID10B.gdml") != G4String::npos)
+        PrepareGRID10BMaterials();
       parser.Read(value);
-      fWorld = parser.GetWorldVolume();
+      auto gdmlWorld = parser.GetWorldVolume();
+      fWorld = value.find("GRID10B.gdml") != G4String::npos
+                   ? BuildGRID10BImportWorld(gdmlWorld)
+                   : gdmlWorld;
 #endif
     }
   }
@@ -606,6 +615,58 @@ void Detector::SetNewValue(G4UIcommand *cmd, G4String value) {
 //
 #include "G4Box.hh"
 #include "G4PVPlacement.hh"
+
+// The supplied GDML files reference material names but do not contain their
+// material definitions.  Provide named compatibility materials before parsing
+// while leaving the distributed XML unchanged.  The aliases are a course
+// import baseline, not a substitute for a final detector material card.
+void AddGDMLMaterialAlias(const G4String &alias, const G4String &nistName) {
+  if (G4Material::GetMaterial(alias, false))
+    return;
+  auto source = G4NistManager::Instance()->FindOrBuildMaterial(nistName);
+  auto aliasMaterial = new G4Material(
+      alias, source->GetDensity(), source->GetNumberOfElements(),
+      source->GetState(), source->GetTemperature(), source->GetPressure());
+  for (size_t index = 0; index < source->GetNumberOfElements(); ++index)
+    aliasMaterial->AddElement(
+        const_cast<G4Element *>(source->GetElement(index)),
+        source->GetFractionVector()[index]);
+}
+
+void PrepareGRID10BMaterials() {
+  AddGDMLMaterialAlias("Vacuum", "G4_Galactic");
+  AddGDMLMaterialAlias("Al2024", "G4_Al");
+  AddGDMLMaterialAlias("BC408", "G4_PLASTIC_SC_VINYLTOLUENE");
+  AddGDMLMaterialAlias("ESR", "G4_MYLAR");
+  AddGDMLMaterialAlias("FR4", "G4_GLASS_PLATE");
+  AddGDMLMaterialAlias("Silicon", "G4_Si");
+  AddGDMLMaterialAlias("Tantalum", "G4_Ta");
+  if (!G4Material::GetMaterial("GAGGCe", false)) {
+    auto nist = G4NistManager::Instance();
+    auto gagg = new G4Material("GAGGCe", 6.63 * CLHEP::g / CLHEP::cm3, 4);
+    gagg->AddElement(nist->FindOrBuildElement("Gd"), 3);
+    gagg->AddElement(nist->FindOrBuildElement("Al"), 2);
+    gagg->AddElement(nist->FindOrBuildElement("Ga"), 3);
+    gagg->AddElement(nist->FindOrBuildElement("O"), 12);
+  }
+  G4cout << "GEARS course: prepared GRID10B GDML compatibility materials"
+         << G4endl;
+}
+
+// The GRID10B GDML envelope is retained unchanged, but is placed in a large
+// vacuum world.  Later checkpoints add course-specific volumes as siblings.
+G4VPhysicalVolume *BuildGRID10BImportWorld(G4VPhysicalVolume *gridWorld) {
+  auto nist = G4NistManager::Instance();
+  auto hall = new G4LogicalVolume(
+      new G4Box("GRID10B_course_world", 1 * CLHEP::m, 1 * CLHEP::m,
+                1 * CLHEP::m),
+      nist->FindOrBuildMaterial("G4_Galactic"), "GRID10B_course_world");
+  new G4PVPlacement(nullptr, G4ThreeVector(), gridWorld->GetLogicalVolume(),
+                    "GRID10B_assembly", hall, false, 0, true);
+  return new G4PVPlacement(nullptr, G4ThreeVector(), hall,
+                           "GRID10B_course_world", nullptr, false, 0, true);
+}
+
 G4VPhysicalVolume *Detector::Construct() {
   if (fWorld == NULL) {
     G4cout << "GEARS: no detector specified, set to a 10x10x10 m^3 box."
