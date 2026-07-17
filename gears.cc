@@ -4,9 +4,12 @@
  */
 #include <vector>
 using namespace std;
+#include <G4Exception.hh>
+#include <G4LogicalVolume.hh>
 #include <G4Material.hh>
 #include <G4SteppingManager.hh>
 #include <G4SteppingVerbose.hh>
+#include <G4VPhysicalVolume.hh>
 /**
  * Dump simulation results to screen or a file.
  */
@@ -170,8 +173,13 @@ void Output::Record() {
   zz.push_back(pos.z() / CLHEP::mm);
   dt.push_back(fTrack->GetLocalTime() / CLHEP::ns);
 
+  const auto &volumeName = handle->GetVolume()->GetName();
+  const auto &logicalName = handle->GetVolume()->GetLogicalVolume()->GetName();
+  // The supplied GDML has no GEARS "(S)" marker.  Select exactly one
+  // logical volume instead of renaming the input geometry.
+  const bool courseTarget = logicalName == "CRYSTAL001_GAGGCe";
   if (de.back() > 0 &&
-      G4StrUtil::contains(handle->GetVolume()->GetName(), "(S)")) {
+      (G4StrUtil::contains(volumeName, "(S)") || courseTarget)) {
     if (et.size() < (unsigned int)copyNo + 1)
       et.resize((unsigned int)copyNo + 1);
     et[copyNo] += de.back();
@@ -560,6 +568,7 @@ Detector::Detector()
 //
 #include <G4FieldManager.hh>
 #include <G4LogicalVolumeStore.hh>
+#include <G4PhysicalVolumeStore.hh>
 #include <G4TransportationManager.hh>
 #include <G4UniformMagField.hh>
 #include <G4UserLimits.hh>
@@ -657,6 +666,26 @@ void PrepareGRID10BMaterials() {
 // vacuum world.  Later checkpoints add course-specific volumes as siblings.
 G4VPhysicalVolume *BuildGRID10BImportWorld(G4VPhysicalVolume *gridWorld) {
   auto nist = G4NistManager::Instance();
+  auto target = G4LogicalVolumeStore::GetInstance()->GetVolume(
+      "CRYSTAL001_GAGGCe", false);
+  if (!target)
+    G4Exception("BuildGRID10BImportWorld", "GRID10BTargetMissing",
+                FatalException, "CRYSTAL001_GAGGCe was not found in GDML.");
+  target->SetMaterial(nist->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE"));
+
+  vector<G4VPhysicalVolume *> targetPlacements;
+  for (auto physical : *G4PhysicalVolumeStore::GetInstance())
+    if (physical->GetLogicalVolume() == target)
+      targetPlacements.push_back(physical);
+  if (targetPlacements.size() != 1)
+    G4Exception("BuildGRID10BImportWorld", "GRID10BTargetPlacement",
+                FatalException,
+                "CRYSTAL001_GAGGCe must have exactly one GDML placement.");
+  // GEARS reserves et[0] for the sum of sensitive volumes.
+  targetPlacements.front()->SetCopyNo(1);
+  G4cout << "GEARS course: CRYSTAL001_GAGGCe -> "
+         << target->GetMaterial()->GetName() << ", et[1]" << G4endl;
+
   auto hall = new G4LogicalVolume(
       new G4Box("GRID10B_course_world", 1 * CLHEP::m, 1 * CLHEP::m,
                 1 * CLHEP::m),
