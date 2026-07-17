@@ -4,8 +4,11 @@
  */
 #include <vector>
 using namespace std;
+#include <G4Exception.hh>
+#include <G4LogicalVolume.hh>
 #include <G4SteppingManager.hh>
 #include <G4SteppingVerbose.hh>
+#include <G4VPhysicalVolume.hh>
 /**
  * Dump simulation results to screen or a file.
  */
@@ -170,8 +173,9 @@ void Output::Record() {
   dt.push_back(fTrack->GetLocalTime() / CLHEP::ns);
 
   const auto &volumeName = handle->GetVolume()->GetName();
+  const auto &logicalName = handle->GetVolume()->GetLogicalVolume()->GetName();
   // GRID10B is pre-existing GDML; select one crystal without renaming it.
-  const bool courseTarget = volumeName == "CRYSTAL001_GAGGCe";
+  const bool courseTarget = logicalName == "CRYSTAL001_GAGGCe";
   if (de.back() > 0 &&
       (G4StrUtil::contains(volumeName, "(S)") || courseTarget)) {
     if (et.size() < (unsigned int)copyNo + 1)
@@ -629,15 +633,17 @@ G4VPhysicalVolume *BuildGRID10BCourseWorld(G4VPhysicalVolume *gridWorld) {
     G4Exception("BuildGRID10BCourseWorld", "GRID10BTargetMissing",
                 FatalException, "CRYSTAL001_GAGGCe was not found in GDML.");
   target->SetMaterial(nist->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE"));
-  auto targetPhysical = G4PhysicalVolumeStore::GetInstance()->GetVolume(
-      "CRYSTAL001_GAGGCe", false);
-  if (!targetPhysical)
+  vector<G4VPhysicalVolume *> targetPlacements;
+  for (auto physical : *G4PhysicalVolumeStore::GetInstance())
+    if (physical->GetLogicalVolume() == target)
+      targetPlacements.push_back(physical);
+  if (targetPlacements.size() != 1)
     G4Exception("BuildGRID10BCourseWorld", "GRID10BTargetPlacementMissing",
                 FatalException,
-                "CRYSTAL001_GAGGCe physical placement was not found in GDML.");
+                "CRYSTAL001_GAGGCe must have exactly one GDML placement.");
   // GEARS uses a positive physical copy number as the et[] index.  Keep 0 for
   // the all-sensitive-volume sum and reserve et[1] for this course crystal.
-  targetPhysical->SetCopyNo(1);
+  targetPlacements.front()->SetCopyNo(1);
   G4cout << "GEARS course: CRYSTAL001_GAGGCe -> "
          << target->GetMaterial()->GetName() << ", et[1]" << G4endl;
 
