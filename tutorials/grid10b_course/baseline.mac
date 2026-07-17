@@ -1,0 +1,26 @@
+/control/verbose 1
+/geometry/source GRID10B.gdml
+/physics_lists/select FTFP_BERT_EMZ
+/run/initialize
+/geometry/test/run
+
+/vis/open OGL
+/vis/drawVolume
+/vis/scene/add/axes 0 0 0 100 mm
+/vis/scene/add/trajectories
+
+# Provisional normal-incidence source; correct after visual inspection.
+/gps/particle gamma
+/gps/energy 662 keV
+/gps/pos/type Plane
+/gps/pos/shape Square
+/gps/pos/centre 0 0 -500 mm
+/gps/pos/halfx 250 mm
+/gps/pos/halfy 250 mm
+/gps/direction 0 0 1
+/run/beamOn 10
+
+/vis/disable
+/analysis/setFileName grid10b_662keV.root
+/run/printProgress 1000
+/run/beamOn 10000

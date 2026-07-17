@@ -169,8 +169,11 @@ void Output::Record() {
   zz.push_back(pos.z() / CLHEP::mm);
   dt.push_back(fTrack->GetLocalTime() / CLHEP::ns);
 
+  const auto &volumeName = handle->GetVolume()->GetName();
+  // GRID10B is pre-existing GDML; select one crystal without renaming it.
+  const bool courseTarget = volumeName == "CRYSTAL001_GAGGCe";
   if (de.back() > 0 &&
-      G4StrUtil::contains(handle->GetVolume()->GetName(), "(S)")) {
+      (G4StrUtil::contains(volumeName, "(S)") || courseTarget)) {
     if (et.size() < (unsigned int)copyNo + 1)
       et.resize((unsigned int)copyNo + 1);
     et[copyNo] += de.back();
@@ -489,6 +492,9 @@ TextDetectorBuilder::ConstructDetector(const G4tgrVolume *topVol) {
 #include <G4UIdirectory.hh>
 #include <G4UImessenger.hh>
 #include <G4VUserDetectorConstruction.hh>
+
+G4VPhysicalVolume *BuildGRID10BCourseWorld(G4VPhysicalVolume *gridWorld);
+
 /**
  * Construct detector geometry.
  *
@@ -597,7 +603,10 @@ void Detector::SetNewValue(G4UIcommand *cmd, G4String value) {
     } else { // GDML input
       G4GDMLParser parser;
       parser.Read(value);
-      fWorld = parser.GetWorldVolume();
+      auto gdmlWorld = parser.GetWorldVolume();
+      fWorld = value.find("GRID10B.gdml") != G4String::npos
+                   ? BuildGRID10BCourseWorld(gdmlWorld)
+                   : gdmlWorld;
 #endif
     }
   }
@@ -606,6 +615,38 @@ void Detector::SetNewValue(G4UIcommand *cmd, G4String value) {
 //
 #include "G4Box.hh"
 #include "G4PVPlacement.hh"
+
+// GRID10B's native GDML envelope is too small for a 400 mm support.  Wrap it
+// in a larger vacuum world, then place the imported detector and support as
+// siblings.  The +z placement is deliberately a lesson-04 parameter to be
+// verified by visualization before production runs.
+G4VPhysicalVolume *BuildGRID10BCourseWorld(G4VPhysicalVolume *gridWorld) {
+  auto nist = G4NistManager::Instance();
+  auto target = G4LogicalVolumeStore::GetInstance()->GetVolume(
+      "CRYSTAL001_GAGGCe", false);
+  if (!target)
+    G4Exception("BuildGRID10BCourseWorld", "GRID10BTargetMissing",
+                FatalException, "CRYSTAL001_GAGGCe was not found in GDML.");
+  target->SetMaterial(nist->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE"));
+  G4cout << "GEARS course: CRYSTAL001_GAGGCe -> "
+         << target->GetMaterial()->GetName() << G4endl;
+
+  auto hall = new G4LogicalVolume(
+      new G4Box("GRID10B_course_world", 1 * CLHEP::m, 1 * CLHEP::m,
+                1 * CLHEP::m),
+      nist->FindOrBuildMaterial("G4_Galactic"), "GRID10B_course_world");
+  new G4PVPlacement(nullptr, G4ThreeVector(), gridWorld->GetLogicalVolume(),
+                    "GRID10B_assembly", hall, false, 0, true);
+  auto support = new G4LogicalVolume(
+      new G4Box("GRID10B_aluminium_support", 200 * CLHEP::mm,
+                200 * CLHEP::mm, 200 * CLHEP::mm),
+      nist->FindOrBuildMaterial("G4_Al"), "GRID10B_aluminium_support");
+  new G4PVPlacement(nullptr, G4ThreeVector(0, 0, 225 * CLHEP::mm), support,
+                    "GRID10B_aluminium_support", hall, false, 0, true);
+  return new G4PVPlacement(nullptr, G4ThreeVector(), hall,
+                           "GRID10B_course_world", nullptr, false, 0, true);
+}
+
 G4VPhysicalVolume *Detector::Construct() {
   if (fWorld == NULL) {
     G4cout << "GEARS: no detector specified, set to a 10x10x10 m^3 box."
