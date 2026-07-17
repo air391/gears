@@ -562,6 +562,7 @@ Detector::Detector()
 //
 #include <G4FieldManager.hh>
 #include <G4LogicalVolumeStore.hh>
+#include <G4PhysicalVolumeStore.hh>
 #include <G4TransportationManager.hh>
 #include <G4UniformMagField.hh>
 #include <G4UserLimits.hh>
@@ -628,8 +629,17 @@ G4VPhysicalVolume *BuildGRID10BCourseWorld(G4VPhysicalVolume *gridWorld) {
     G4Exception("BuildGRID10BCourseWorld", "GRID10BTargetMissing",
                 FatalException, "CRYSTAL001_GAGGCe was not found in GDML.");
   target->SetMaterial(nist->FindOrBuildMaterial("G4_PLASTIC_SC_VINYLTOLUENE"));
+  auto targetPhysical = G4PhysicalVolumeStore::GetInstance()->GetVolume(
+      "CRYSTAL001_GAGGCe", false);
+  if (!targetPhysical)
+    G4Exception("BuildGRID10BCourseWorld", "GRID10BTargetPlacementMissing",
+                FatalException,
+                "CRYSTAL001_GAGGCe physical placement was not found in GDML.");
+  // GEARS uses a positive physical copy number as the et[] index.  Keep 0 for
+  // the all-sensitive-volume sum and reserve et[1] for this course crystal.
+  targetPhysical->SetCopyNo(1);
   G4cout << "GEARS course: CRYSTAL001_GAGGCe -> "
-         << target->GetMaterial()->GetName() << G4endl;
+         << target->GetMaterial()->GetName() << ", et[1]" << G4endl;
 
   auto hall = new G4LogicalVolume(
       new G4Box("GRID10B_course_world", 1 * CLHEP::m, 1 * CLHEP::m,

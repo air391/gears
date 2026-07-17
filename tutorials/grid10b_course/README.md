@@ -13,5 +13,5 @@ The source changes `CRYSTAL001_GAGGCe` to
 world so a 400 mm aluminium support can be added.  The provisional +z support
 position and GPS direction must be verified together before production use.
 
-Required evidence: a clean overlap check, startup material printout, and
-event-level target energy in the ROOT `et[1]` array.
+Required evidence: a clean overlap check, startup material printout ending in
+`et[1]`, and event-level target energy in that ROOT array.
