@@ -1,0 +1,8 @@
+// Minimal scintillator used only to introduce GPS, sensitive-volume scoring
+// and ROOT output.  GRID10B is introduced in Lesson 04.
+:volu world BOX 400 400 400 G4_AIR
+:vis world OFF
+:volu scintillator(S) BOX 20 20 20 G4_PLASTIC_SC_VINYLTOLUENE
+:color scintillator(S) 0.1 0.7 0.2
+:rotm r000 0 0 0
+:place scintillator(S) 1 world r000 0 0 0

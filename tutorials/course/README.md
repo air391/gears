@@ -23,4 +23,5 @@ server because the system Expat is older than Geant4 11.4.1 requires.
 | Tag | Lesson | Focus |
 | --- | --- | --- |
 | `course-l03-start` | L03 | Build GEARS and run its upstream output tutorial. |
-| Later tags | L03--L05 | Added one after another by the corresponding checkpoint. |
+| `course-l03-source-output` | L03 | Fixed-direction gamma macro and a minimal Python spectrum. |
+| Later tags | L04--L05 | Added one after another by the corresponding checkpoint. |

@@ -1,0 +1,18 @@
+/control/verbose 1
+/geometry/source detector.tg
+/run/initialize
+
+# A parallel, normally incident mono-energetic gamma beam.
+/gps/particle gamma
+/gps/energy 662 keV
+/gps/pos/type Plane
+/gps/pos/shape Square
+/gps/pos/centre 0 0 -100 mm
+/gps/pos/halfx 25 mm
+/gps/pos/halfy 25 mm
+/gps/direction 0 0 1
+
+/tracking/verbose 0
+/analysis/setFileName l03_662keV.root
+/run/printProgress 1000
+/run/beamOn 5000
