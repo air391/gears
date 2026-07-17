@@ -26,4 +26,5 @@ server because the system Expat is older than Geant4 11.4.1 requires.
 | `course-l03-source-output` | L03 | Fixed-direction gamma macro and a minimal Python spectrum. |
 | `course-l04-gdml-import` | L04 | Import the distributed GDML and verify its geometry. |
 | `course-l04-target-material` | L04 | Select one logical volume, replace its material and map it to `et[1]`. |
+| `course-l04-al-support` | L04 | Add a parameterised 400 mm aluminium support outside the GDML envelope. |
 | Later tags | L04--L05 | Added one after another by the corresponding checkpoint. |

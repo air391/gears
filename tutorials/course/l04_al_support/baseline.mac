@@ -1,0 +1,20 @@
+/control/verbose 1
+/geometry/source GRID10B.gdml
+/run/initialize
+/geometry/test/run
+
+# Provisional +z normal-incidence setup.  Confirm its orientation with the
+# geometry visualisation before relying on this production-style run.
+/gps/particle gamma
+/gps/energy 662 keV
+/gps/pos/type Plane
+/gps/pos/shape Square
+/gps/pos/centre 0 0 -500 mm
+/gps/pos/halfx 250 mm
+/gps/pos/halfy 250 mm
+/gps/direction 0 0 1
+
+/tracking/verbose 0
+/analysis/setFileName grid10b_662keV.root
+/run/printProgress 1000
+/run/beamOn 5000

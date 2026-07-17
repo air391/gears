@@ -666,6 +666,11 @@ void PrepareGRID10BMaterials() {
 // vacuum world.  Later checkpoints add course-specific volumes as siblings.
 G4VPhysicalVolume *BuildGRID10BImportWorld(G4VPhysicalVolume *gridWorld) {
   auto nist = G4NistManager::Instance();
+  // Lesson 04 geometry parameters.  +z is the provisional detector-back
+  // direction in the imported coordinate system; verify it visually before
+  // using this checkpoint for production data.
+  const auto supportSide = 400 * CLHEP::mm;
+  const auto supportCenter = G4ThreeVector(0, 0, 225 * CLHEP::mm);
   auto target = G4LogicalVolumeStore::GetInstance()->GetVolume(
       "CRYSTAL001_GAGGCe", false);
   if (!target)
@@ -692,6 +697,12 @@ G4VPhysicalVolume *BuildGRID10BImportWorld(G4VPhysicalVolume *gridWorld) {
       nist->FindOrBuildMaterial("G4_Galactic"), "GRID10B_course_world");
   new G4PVPlacement(nullptr, G4ThreeVector(), gridWorld->GetLogicalVolume(),
                     "GRID10B_assembly", hall, false, 0, true);
+  auto support = new G4LogicalVolume(
+      new G4Box("GRID10B_aluminium_support", supportSide / 2,
+                supportSide / 2, supportSide / 2),
+      nist->FindOrBuildMaterial("G4_Al"), "GRID10B_aluminium_support");
+  new G4PVPlacement(nullptr, supportCenter, support,
+                    "GRID10B_aluminium_support", hall, false, 0, true);
   return new G4PVPlacement(nullptr, G4ThreeVector(), hall,
                            "GRID10B_course_world", nullptr, false, 0, true);
 }
